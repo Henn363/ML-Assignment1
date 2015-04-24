@@ -1,0 +1,80 @@
+
+# Prediction Assignment Writeup
+
+
+**Background**
+
+The datasets is from the Human Activity Recognition (HAR) research. The goal of this research was to investigate "how well" an activity was performed by the wearer. The data is based on wearable accelerometers participants wore that measure activity and motion.
+
+
+
+For the prediction of how welll individuals performed the assigned exercise six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+
+The goal of this assignment is to predict the activity the individual was performing using the data on the test data set.
+
+```{r , echo=FALSE, results='hide',message=FALSE, warning=FALSE}
+library(dplyr)
+library(caret)
+```
+
+**Loading Data**
+
+Loading the training and test data sets. The test set has no exercise activity classification. I will use the train data to create a model to predict which exercises were performed.
+
+```{r, echo=TRUE}
+train <- read.csv("training.csv", header=T, na.strings = c("", "NA"))
+test <- read.csv("testing.csv", header=T, na.strings= c("", "NA"))
+```
+
+**Data Cleaning: Removing NA's and Unnecessary columns**
+
+I'll create a threshold for NA column sum then remove columns that exceed that threshold.
+```{r, echo=TRUE}
+NAS <- apply(train, 2, function(x) sum(is.na(x)))
+NAS <- as.numeric(NAS) ;NA_test <- NAS <= 1000
+train <- train[,NA_test]
+test <- test[, NA_test]
+```
+
+Remove columns X to num_windows. They won't help model with prediction.
+```{r, echo=TRUE}
+train <- select(train, -(X:num_window))
+test <- select(test , -(X:num_window))
+```
+
+***Data Partitioning***
+
+Divide the training data into a training and test set. We will train our data on the train set and test on the training_test data set.
+```{r, echo=TRUE}
+inTrain <- createDataPartition(y=train$classe, p = 0.70, list = FALSE)
+train <- train[inTrain,]
+training_test <- train[-inTrain,]
+```
+
+***Random Forest Model Creation***
+
+Used 3 fold cross validation to help pick better paramters in the prediction function.
+```{r, echo = TRUE}
+set.seed(1983)
+fitCross <-trainControl(method="cv", number=3, allowParallel=T, verbose=T)
+RF_Model <-train(classe~.,data=train, method="rf", trControl=fitCross, verbose=F)
+```
+
+***Results***
+
+These are the results: 99.3% accucurate predicting correct activity(classe) on the training_test data. 
+```{r, echo=TRUE}
+results <- predict(RF_Model, newdata=training_test)
+confusionMatrix(results, training_test$classe)
+```
+
+***Prediction on original test data***
+
+Activity(classe) prediction for 20 observations on the original test data.
+```{r, echo=TRUE}
+answers <- predict(RF_Model, newdata=test)
+answers <- as.character(answers)
+answers
+```
+
+
